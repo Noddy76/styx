@@ -22,13 +22,13 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import com.google.common.base.Charsets._
 import com.hotels.styx.api.HttpResponseStatus.OK
 import com.hotels.styx.api.LiveHttpRequest.get
-import com.hotels.styx.api.LiveHttpResponse
+import com.hotels.styx.api.{HttpResponse, LiveHttpResponse}
 import com.hotels.styx.api.exceptions.ResponseTimeoutException
 import com.hotels.styx.api.extension.Origin._
 import com.hotels.styx.api.extension.loadbalancing.spi.LoadBalancer
 import com.hotels.styx.api.extension.service.BackendService
 import com.hotels.styx.api.extension.{ActiveOrigins, Origin}
-import com.hotels.styx.api.metrics.codahale.{CodaHaleMetricRegistry, NoopMetricRegistry}
+import com.hotels.styx.api.metrics.codahale.NoopMetricRegistry
 import com.hotels.styx.client.OriginsInventory.newOriginsInventoryBuilder
 import com.hotels.styx.client.StyxBackendServiceClient._
 import com.hotels.styx.client.loadbalancing.strategies.BusyConnectionsStrategy
@@ -67,7 +67,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
     originOneServer.stop()
   }
 
-  def activeOrigins(backendService: BackendService): ActiveOrigins = newOriginsInventoryBuilder(new CodaHaleMetricRegistry(new SimpleMeterRegistry()),backendService).build()
+  def activeOrigins(backendService: BackendService): ActiveOrigins = newOriginsInventoryBuilder(new SimpleMeterRegistry(),backendService).build()
 
   def busyConnectionStrategy(activeOrigins: ActiveOrigins): LoadBalancer = new BusyConnectionsStrategy(activeOrigins)
 
@@ -95,7 +95,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
   test("Emits an HTTP response containing Content-Length from persistent connection that stays open.") {
     originOneServer.stub(urlStartingWith("/"), response200OkWithContentLengthHeader("Test message body."))
 
-    val response = Mono.from(client.sendRequest(get("/foo/2").build(), requestContext()))
+    val response: HttpResponse = Mono.from(client.sendRequest(get("/foo/2").build(), requestContext()))
       .flatMap((liveHttpResponse: LiveHttpResponse) => {
         Mono.from(liveHttpResponse.aggregate(10000))
       })
@@ -109,7 +109,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
   ignore("Determines response content length from server closing the connection.") {
     // originRespondingWith(response200OkFollowedFollowedByServerConnectionClose("Test message body."))
 
-    val response = Mono.from(client.sendRequest(get("/foo/3").build(), requestContext()))
+    val response: HttpResponse = Mono.from(client.sendRequest(get("/foo/3").build(), requestContext()))
       .flatMap((liveHttpResponse: LiveHttpResponse) => {
         Mono.from(liveHttpResponse.aggregate(10000))
       })

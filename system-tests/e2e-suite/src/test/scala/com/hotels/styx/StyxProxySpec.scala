@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2013-2019 Expedia Inc.
+  Copyright (C) 2013-2020 Expedia Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import com.hotels.styx.infrastructure.{MemoryBackedRegistry, RegistryServiceAdap
 import com.hotels.styx.plugins.PluginPipelineSpec
 import com.hotels.styx.support.configuration.{ImplicitOriginConversions, StyxBackend, StyxBaseConfig}
 import com.hotels.styx.support.{ImplicitStyxConversions, configuration}
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.scalatest._
 import org.slf4j.LoggerFactory
 
@@ -39,6 +41,7 @@ trait StyxProxySpec extends StyxClientSupplier
   private val LOGGER = LoggerFactory.getLogger(getClass)
   var backendsRegistry = new MemoryBackedRegistry[BackendService]
   var styxServer: StyxServer = _
+  var meterRegistry: MeterRegistry = _
 
   implicit class StyxServerOperations(val styxServer: StyxServer) extends StyxServerSupplements
     with BackendServicesRegistrySupplier {
@@ -51,7 +54,8 @@ trait StyxProxySpec extends StyxClientSupplier
   }
 
   override protected def beforeAll() = {
-    styxServer = styxConfig.startServer(new RegistryServiceAdapter(backendsRegistry))
+    meterRegistry = new SimpleMeterRegistry()
+    styxServer = styxConfig.startServer(new RegistryServiceAdapter(backendsRegistry), meterRegistry)
     LOGGER.info("Styx http port is: [%d]".format(styxServer.httpPort))
     LOGGER.info("Styx https port is: [%d]".format(styxServer.secureHttpPort))
     super.beforeAll()

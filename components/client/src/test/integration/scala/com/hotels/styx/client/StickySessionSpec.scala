@@ -28,24 +28,25 @@ import com.hotels.styx.api.RequestCookie.requestCookie
 import com.hotels.styx.api.extension.loadbalancing.spi.LoadBalancer
 import com.hotels.styx.api.extension.service.{BackendService, StickySessionConfig}
 import com.hotels.styx.api.extension.{ActiveOrigins, Origin}
-import com.hotels.styx.api.metrics.codahale.{CodaHaleMetricRegistry, NoopMetricRegistry}
+import com.hotels.styx.api.metrics.codahale.NoopMetricRegistry
 import com.hotels.styx.client.OriginsInventory.newOriginsInventoryBuilder
 import com.hotels.styx.client.StyxBackendServiceClient.newHttpClientBuilder
 import com.hotels.styx.client.loadbalancing.strategies.RoundRobinStrategy
 import com.hotels.styx.client.stickysession.StickySessionLoadBalancingStrategy
+import com.hotels.styx.support.Support.requestContext
 import com.hotels.styx.support.server.FakeHttpServer
 import com.hotels.styx.support.server.UrlMatchingStrategies.urlStartingWith
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FunSuite, Matchers}
 import reactor.core.publisher.Mono
-import com.hotels.styx.support.Support.requestContext
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 
 import scala.collection.JavaConverters._
 
 class StickySessionSpec extends FunSuite with BeforeAndAfter with Matchers with OriginSupport with MockitoSugar {
 
   val metricsRegistry = new NoopMetricRegistry()
+  val meterRegistry = new SimpleMeterRegistry()
 
   val server1 = new FakeHttpServer(0, "app", "app-01")
   val server2 = new FakeHttpServer(0, "app", "app-02")
@@ -96,7 +97,7 @@ class StickySessionSpec extends FunSuite with BeforeAndAfter with Matchers with 
     server2.stop
   }
 
-  def activeOrigins(backendService: BackendService): ActiveOrigins = newOriginsInventoryBuilder(metricsRegistry, backendService).build()
+  def activeOrigins(backendService: BackendService): ActiveOrigins = newOriginsInventoryBuilder(meterRegistry, backendService).build()
 
   def roundRobinStrategy(activeOrigins: ActiveOrigins): LoadBalancer = new RoundRobinStrategy(activeOrigins, activeOrigins.snapshot())
 
